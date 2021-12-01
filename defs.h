@@ -118,8 +118,8 @@ void setproc(struct proc *);
 void sleep(void *, struct spinlock *);
 void userinit(void);
 int wait(void);
-//I don't know why, but this file only compiled on my machine if twait were declared above wakeup and yield.
-int twait(int *, int *);
+//I don't know why, but this file only compiled on my machine if waitCountTicks were declared above wakeup and yield.
+int waitCountTicks(int *, int *);
 void wakeup(void *);
 void yield(void);
 

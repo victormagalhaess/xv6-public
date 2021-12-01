@@ -23,18 +23,18 @@ int sys_wait(void)
   return wait();
 }
 
-int sys_twait(void)
+int sys_waitCountTicks(void)
 {
-  int *send;
-  int *uend;
+  int *sysTicks;
+  int *usrTicks;
+  int isSysTicksDefined = argptr(0, (char **)&sysTicks, sizeof(int)) >= 0;
+  int isUsrTicksDefined = argptr(1, (char **)&usrTicks, sizeof(int)) >= 0;
 
-  if (argptr(0, (char **)&send, sizeof(int)) < 0)
-    return 12;
-
-  if (argptr(1, (char **)&uend, sizeof(int)) < 0)
-    return 13;
-
-  return twait(send, uend);
+  if (isSysTicksDefined && isUsrTicksDefined)
+  {
+    return waitCountTicks(sysTicks, usrTicks);
+  }
+  return -1;
 }
 
 int sys_kill(void)

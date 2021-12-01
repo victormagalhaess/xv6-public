@@ -15,7 +15,13 @@ int stderr = 2;
 
 void printt(int time, char *type);
 
-// User program that runs the program passed as argument and mensure the program's real, user and sys times
+// User program that runs the program passed as argument
+// and mensure the program's real, user and sys times
+// This program depends on the syscall sys_waitCountTicks.
+// sys_waitCountTicks acts exactly as a normal wait,
+// but instead of just waiting the children die, it actually gets the
+// number of ticks of the child process before it dies and returns it
+// (via pointers) to the time function.
 int main(int argc, char *argv[])
 {
 
@@ -29,9 +35,9 @@ int main(int argc, char *argv[])
 
     char *command = argv[1];
     char **params = argv + 1;
-    int rstart = uptime();
-    int send = 0;
-    int uend = 0;
+    int ticksOnStart = uptime();
+    int sysTicks = 0;
+    int usrTicks = 0;
 
     //fork logic copyied from init.c file
     int pid = fork();
@@ -43,31 +49,31 @@ int main(int argc, char *argv[])
 
     if (pid == defaultpid)
     {
-        uend = uptime() - rstart;
+        usrTicks = uptime() - ticksOnStart;
         exec(command, params);
         exit();
     }
 
     if (pid > defaultpid)
     {
-        twait(&send, &uend);
-        int rend = uptime();
-        int rtotal = rend - rstart;
-        printt(rtotal, real);
-        printt(uend, user);
-        printt(send, sys);
+        waitCountTicks(&sysTicks, &usrTicks);
+        int ticksOnEnd = uptime();
+        int totalTicks = ticksOnEnd - ticksOnStart;
+        printt(totalTicks, real);
+        printt(usrTicks, user);
+        printt(sysTicks, sys);
         exit();
     }
 
     exit();
 }
 
-// Print the miliseconds on 0m0.000s format
-void printt(int milisec, char *type)
+// Print the ticks on 0m0.000s format
+void printt(int ticks, char *type)
 {
     printf(stdout, timemsg, type);
-    int decim = milisec % 1000;
-    int sec = milisec / 1000;
+    int decim = ticks % 100;
+    int sec = ticks / 100;
     int min = sec / 60;
     sec %= 60;
     if (decim < 10)
