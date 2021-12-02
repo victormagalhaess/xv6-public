@@ -50,9 +50,8 @@ void trap(struct trapframe *tf)
     if (cpuid() == 0)
     {
       //in this place, the ticks that the uptime function returns are incremented.
-      //the solution to measure system and user ticks are to increment them there if
-      //there is a process. Running processes are incrementing sysTicks and sleeping
-      //process are incrementing usrTicks.
+      //the solution to measure system ticks are to increment them if
+      //there is a process running.
       acquire(&tickslock);
       ticks++;
       wakeup(&ticks);
@@ -61,11 +60,7 @@ void trap(struct trapframe *tf)
 
       if (actualProcess)
       {
-        if (actualProcess->state == SLEEPING)
-        {
-          actualProcess->usrTicks++;
-        }
-        else if (actualProcess->state == RUNNING)
+        if (actualProcess->state == RUNNING)
         {
           actualProcess->sysTicks++;
         }

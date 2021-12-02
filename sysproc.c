@@ -26,13 +26,11 @@ int sys_wait(void)
 int sys_waitCountTicks(void)
 {
   int *sysTicks;
-  int *usrTicks;
   int isSysTicksDefined = argptr(0, (char **)&sysTicks, sizeof(int)) >= 0;
-  int isUsrTicksDefined = argptr(1, (char **)&usrTicks, sizeof(int)) >= 0;
 
-  if (isSysTicksDefined && isUsrTicksDefined)
+  if (isSysTicksDefined)
   {
-    return waitCountTicks(sysTicks, usrTicks);
+    return waitCountTicks(sysTicks);
   }
   return -1;
 }

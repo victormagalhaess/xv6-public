@@ -56,9 +56,10 @@ int main(int argc, char *argv[])
 
     if (pid > defaultpid)
     {
-        waitCountTicks(&sysTicks, &usrTicks);
+        waitCountTicks(&sysTicks);
         int ticksOnEnd = uptime();
         int totalTicks = ticksOnEnd - ticksOnStart;
+        usrTicks = totalTicks - sysTicks;
         printt(totalTicks, real);
         printt(usrTicks, user);
         printt(sysTicks, sys);

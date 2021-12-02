@@ -28,6 +28,7 @@ int main(int argc, char *argv[])
         strlen(simone);
         strlen(toad);
     }
+    sleep(100); // Should sleep one second
     printf(stdout, toad);
     exit();
 }

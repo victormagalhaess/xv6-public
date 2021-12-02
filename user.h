@@ -23,7 +23,7 @@ int getpid(void);
 char *sbrk(int);
 int sleep(int);
 int uptime(void);
-int waitCountTicks(int *sysTicks, int *usrTicks);
+int waitCountTicks(int *sysTicks);
 
 // ulib.c
 int stat(const char *, struct stat *);

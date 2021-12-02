@@ -114,11 +114,7 @@ found:
   p->context = (struct context *)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
-  p->startTicks = ticks;
-  p->endTicks = 0;
   p->sysTicks = 0;
-  p->usrTicks = 0;
-
   return p;
 }
 
@@ -275,7 +271,6 @@ void exit(void)
 
   // Jump into the scheduler, never to return.
   curproc->state = ZOMBIE;
-  curproc->endTicks = ticks;
   sched();
   panic("zombie exit");
 }
@@ -328,7 +323,7 @@ int wait(void)
 }
 
 // Literal copy of wait but it process userTicks and systemTicks
-int waitCountTicks(int *systemTicks, int *userTicks)
+int waitCountTicks(int *systemTicks)
 {
   struct proc *p;
   int havekids, pid;
@@ -349,7 +344,6 @@ int waitCountTicks(int *systemTicks, int *userTicks)
         // Found one.
         // At this point, a dead process is found, so we need to calculate userTicks and systemTicks based on the
         // ticks saved at the proc
-        *userTicks = p->endTicks - p->startTicks - p->sysTicks - p->usrTicks;
         *systemTicks = p->sysTicks;
         pid = p->pid;
         kfree(p->kstack);
