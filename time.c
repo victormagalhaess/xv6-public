@@ -5,9 +5,9 @@
 // argc = number of arguments + 1 (discovered priting argc)
 #define zeroargs 1
 #define timemsg "%s      "
-#define real "real"
-#define user "user"
-#define sys "sys "
+#define real "Real execution time: "
+#define user "User time:"
+#define sys "System time: "
 #define defaultpid 0
 
 int stdout = 1;
