@@ -23,18 +23,6 @@ int sys_wait(void)
   return wait();
 }
 
-int sys_waitCountTicks(void)
-{
-  int *sysTicks;
-  int isSysTicksDefined = argptr(0, (char **)&sysTicks, sizeof(int)) >= 0;
-
-  if (isSysTicksDefined)
-  {
-    return waitCountTicks(sysTicks);
-  }
-  return -1;
-}
-
 int sys_kill(void)
 {
   int pid;
@@ -94,4 +82,17 @@ int sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+int sys_countTicks(void)
+{
+  int *sysTicks;
+  int isSysTicksDefined = argptr(0, (char **)&sysTicks, sizeof(int)) >= 0;
+
+  if (isSysTicksDefined)
+  {
+    *sysTicks = totalSysTime;
+    totalSysTime = 0;
+  }
+  return -1;
 }

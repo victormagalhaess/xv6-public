@@ -118,7 +118,6 @@ void setproc(struct proc *);
 void sleep(void *, struct spinlock *);
 void userinit(void);
 int wait(void);
-int waitCountTicks(int *);
 void wakeup(void *);
 void yield(void);
 
@@ -186,6 +185,11 @@ void switchuvm(struct proc *);
 void switchkvm(void);
 int copyout(pde_t *, uint, void *, uint);
 void clearpteu(pde_t *pgdir, char *uva);
+
+//time.c
+extern int totalSysTime;
+extern int startSysTime;
+extern int finalSysTime;
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x) / sizeof((x)[0]))

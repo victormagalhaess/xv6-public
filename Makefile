@@ -168,7 +168,9 @@ mkfs: mkfs.c fs.h
 UPROGS=\
 	_cat\
 	_time\
-	_heavyUser\
+	_userTest\
+	_systemTest\
+	_mixedTest\
 	_echo\
 	_forktest\
 	_grep\

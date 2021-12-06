@@ -99,7 +99,7 @@ extern int sys_unlink(void);
 extern int sys_wait(void);
 extern int sys_write(void);
 extern int sys_uptime(void);
-extern int sys_waitCountTicks(void);
+extern int sys_countTicks(void);
 
 static int (*syscalls[])(void) = {
     [SYS_fork] sys_fork,
@@ -123,8 +123,12 @@ static int (*syscalls[])(void) = {
     [SYS_link] sys_link,
     [SYS_mkdir] sys_mkdir,
     [SYS_close] sys_close,
-    [SYS_waitCountTicks] sys_waitCountTicks,
+    [SYS_countTicks] sys_countTicks,
 };
+
+int startSysTime;
+int finalSysTime;
+int totalSysTime;
 
 void syscall(void)
 {
@@ -134,7 +138,10 @@ void syscall(void)
   num = curproc->tf->eax;
   if (num > 0 && num < NELEM(syscalls) && syscalls[num])
   {
+    startSysTime = sys_uptime();
     curproc->tf->eax = syscalls[num]();
+    finalSysTime = sys_uptime();
+    totalSysTime += finalSysTime - startSysTime;
   }
   else
   {

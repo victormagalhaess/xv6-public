@@ -49,22 +49,10 @@ void trap(struct trapframe *tf)
   case T_IRQ0 + IRQ_TIMER:
     if (cpuid() == 0)
     {
-      //in this place, the ticks that the uptime function returns are incremented.
-      //the solution to measure system ticks are to increment them if
-      //there is a process running.
       acquire(&tickslock);
       ticks++;
       wakeup(&ticks);
       release(&tickslock);
-      struct proc *actualProcess = myproc();
-
-      if (actualProcess)
-      {
-        if (actualProcess->state == RUNNING)
-        {
-          actualProcess->sysTicks++;
-        }
-      }
     }
     lapiceoi();
     break;

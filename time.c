@@ -6,8 +6,8 @@
 #define zeroargs 1
 #define timemsg "%s      "
 #define real "Real execution time: "
-#define user "User time:"
-#define sys "System time: "
+#define user "User time:           "
+#define sys "System time:         "
 #define defaultpid 0
 
 int stdout = 1;
@@ -17,8 +17,8 @@ void printt(int time, char *type);
 
 // User program that runs the program passed as argument
 // and mensure the program's real, user and sys times
-// This program depends on the syscall sys_waitCountTicks.
-// sys_waitCountTicks acts exactly as a normal wait,
+// This program depends on the syscall sys_countTicks.
+// sys_countTicks acts exactly as a normal wait,
 // but instead of just waiting the children die, it actually gets the
 // number of ticks of the child process before it dies and returns it
 // (via pointers) to the time function.
@@ -38,6 +38,7 @@ int main(int argc, char *argv[])
     int ticksOnStart = uptime();
     int sysTicks = 0;
     int usrTicks = 0;
+    countTicks(&sysTicks);
 
     //fork logic copyied from init.c file
     int pid = fork();
@@ -56,7 +57,8 @@ int main(int argc, char *argv[])
 
     if (pid > defaultpid)
     {
-        waitCountTicks(&sysTicks);
+        wait();
+        countTicks(&sysTicks);
         int ticksOnEnd = uptime();
         int totalTicks = ticksOnEnd - ticksOnStart;
         usrTicks = totalTicks - sysTicks;
