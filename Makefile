@@ -168,6 +168,9 @@ mkfs: mkfs.c fs.h
 UPROGS=\
 	_cat\
 	_time\
+	_getpriority\
+	_schedule\
+	_testschedule\
 	_userTest\
 	_systemTest\
 	_mixedTest\

@@ -96,3 +96,19 @@ int sys_countTicks(void)
   }
   return -1;
 }
+
+int sys_getpriority()
+{
+  return getpriority();
+}
+
+int sys_setpriority()
+{
+  //getting values from argint as sys_sleep method
+  int pid, priority;
+  if (argint(0, &pid) < 0)
+    return -1;
+  if (argint(0, &priority) < 0)
+    return -1;
+  return setpriority(pid, priority);
+}
