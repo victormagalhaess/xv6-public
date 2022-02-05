@@ -110,4 +110,17 @@ void trap(struct trapframe *tf)
   // Check if the process has been killed since we yielded
   if (myproc() && myproc()->killed && (tf->cs & 3) == DPL_USER)
     exit();
+
+  if (myproc() && (tf->cs & 3) == 3)
+  {
+    myproc()->curalarmticks++;
+    if (myproc()->alarmticks == myproc()->curalarmticks)
+    {
+      myproc()->curalarmticks = 0;
+      tf->esp -= 4;
+      *((uint *)(tf->esp)) = tf->eip;
+
+      tf->eip = (uint)myproc()->alarmhandler;
+    }
+  }
 }
