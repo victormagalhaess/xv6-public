@@ -67,6 +67,52 @@ myproc(void)
   return p;
 }
 
+int processPriorityShouldBeAccounted(struct proc *p)
+{
+  int isStateValid = (p->state == RUNNABLE || p->state == RUNNING);
+  char *scheduleName = "schedule";
+  char *processName = p->name;
+  int i = 0;
+  //compare process name to no take in account schedule process
+  while (scheduleName[i] != '\0' && processName[i] != '\0')
+  {
+    if (scheduleName[i] != processName[i])
+    {
+      return 0;
+    }
+    i++;
+  }
+  return isStateValid;
+}
+
+void refreshTimeGivenForAllProcess()
+{
+  struct proc *p = ptable.proc;
+  int executionWindowSeconds = 10;
+  // Formula given by the professor
+  int totalPriorities = 0;
+  while (p < &ptable.proc[NPROC])
+  {
+    if (processPriorityShouldBeAccounted(p))
+      totalPriorities += p->priority;
+    p++;
+  }
+  while (p < &ptable.proc[NPROC])
+  {
+    // new time for each process will be the fraction of all priorities taken by the process multiplied by the 10 second window
+    if (p->priority != 0)
+    {
+      p->timeGiven = (p->priority / totalPriorities) * executionWindowSeconds;
+    }
+    else
+    {
+      p->timeGiven = 0;
+    }
+
+    p++;
+  }
+}
+
 //PAGEBREAK: 32
 // Look in the process table for an UNUSED proc.
 // If found, change state to EMBRYO and initialize
@@ -88,9 +134,11 @@ allocproc(void)
   return 0;
 
 found:
-  p->priority = 10; //default priority
+  p->priority = 1; //default priority set by the professor
+  refreshTimeGivenForAllProcess();
   p->state = EMBRYO;
   p->pid = nextpid++;
+  p->startTicks = ticks;
 
   release(&ptable.lock);
 
@@ -271,6 +319,14 @@ void exit(void)
   }
 
   // Jump into the scheduler, never to return.
+  if (curproc->priority > 0)
+  {
+    curproc->priority = 0;
+  }
+  curproc->timeGiven = 0; // must reset the time allowed to this process
+  curproc->executionTime = 0;
+  curproc->ticksCount = 0;
+  refreshTimeGivenForAllProcess(); // recalculate the time given to the other process
   curproc->state = ZOMBIE;
   sched();
   panic("zombie exit");
@@ -333,7 +389,7 @@ int wait(void)
 //      via swtch back to the scheduler.
 void scheduler(void)
 {
-  struct proc *p, *p1;
+  struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
 
@@ -352,14 +408,31 @@ void scheduler(void)
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
+      int totalPriorities = 0;
+      while (p < &ptable.proc[NPROC])
+      {
+        if (processPriorityShouldBeAccounted(p))
+          totalPriorities += p->priority;
+        p++;
+      }
       highP = p;
       //choose one with highest priority
-      for (p1 = ptable.proc; p1 < &ptable.proc[NPROC]; p1++)
+      struct proc *auxiliarProc = ptable.proc;
+      // Must iterate through all process doing a linear search to find the one with the higher priority to schedule
+      while (auxiliarProc < &ptable.proc[NPROC])
       {
-        if (p1->state != RUNNABLE)
+        if (auxiliarProc->state != RUNNABLE)
+        {
           continue;
-        if (highP->priority > p1->priority) //larger value, lower priority
-          highP = p1;
+        }
+        if (auxiliarProc->ticksCount > (auxiliarProc->priority * 100) / totalPriorities)
+        {
+          auxiliarProc->ticksCount = 0;
+          continue;
+        }
+        highP = auxiliarProc;
+        auxiliarProc++;
+        break;
       }
       p = highP;
       c->proc = p;
@@ -556,17 +629,34 @@ void procdump(void)
 
 void printProcessStatus(char *status, struct proc *p)
 {
-  cprintf("%s \t %d \t %s \t %d \n ", p->name, p->pid, status, p->priority);
+  cprintf("%d \t %d \t %d \n", p->pid, p->priority, p->executionTime);
 }
 
 int getpriority()
 {
-  //acquire example copyed from the kill function
-  struct proc *p;
+
   sti();
   acquire(&ptable.lock);
+  struct proc *p = ptable.proc;
 
-  cprintf("name \t pid \t state \t priority \n");
+  int totalPriorities = 0;
+  while (p < &ptable.proc[NPROC])
+  {
+    if (processPriorityShouldBeAccounted(p))
+      totalPriorities += p->priority;
+    p++;
+  }
+
+  //acquire example copyed from the kill function
+  cprintf("Processos \t Prioridade \t Exec Esperada\n");
+  if (processPriorityShouldBeAccounted(p))
+  {
+    p->executionTime = (p->priority / totalPriorities) * 10;
+  }
+  else
+  {
+    p->executionTime = 0;
+  }
 
   for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
   {

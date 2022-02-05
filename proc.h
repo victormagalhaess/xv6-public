@@ -60,7 +60,11 @@ struct proc
   struct file *ofile[NOFILE]; // Open files
   struct inode *cwd;          // Current directory
   char name[16];              // Process name (debugging)
-  int priority;
+  int priority;               // Priority of the process
+  int timeGiven;              // Execution time allowed to execute the process
+  uint startTicks;            // System Ticks at process start
+  int executionTime;
+  int ticksCount;
 };
 
 // Process memory is laid out contiguously, low addresses first:

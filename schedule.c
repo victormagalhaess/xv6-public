@@ -3,6 +3,8 @@
 
 // argc = number of arguments + 1 (discovered priting argc)
 #define MINIMUM_ARGS 3
+#define MINIMUM_PRIORITY 1
+#define MAXIMUM_PRIORITY 10
 int stdout = 1;
 int stderr = 2;
 
@@ -21,11 +23,14 @@ int main(int argc, char *argv[])
     int pid = atoi(argv[1]);
     int priority = atoi(argv[2]);
 
-    if (priority < 0 || priority > 20)
+    if (priority >= MINIMUM_PRIORITY && priority <= MAXIMUM_PRIORITY)
     {
-        printerr("An error occurred running the schedule command: invalid priority (0-20)!\n");
+        setpriority(pid, priority);
         exit();
     }
-    setpriority(pid, priority);
-    exit();
+    else
+    {
+        printerr("An error occurred running the schedule command: wrong value to priority!\n");
+        exit();
+    }
 }
