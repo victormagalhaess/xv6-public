@@ -25,6 +25,8 @@ int sleep(int);
 int uptime(void);
 int countTicks(int *sysTicks);
 int alarm(int ticks, void (*handler)());
+int ps(void);
+int setprio(int, int);
 
 // ulib.c
 int stat(const char *, struct stat *);

@@ -169,6 +169,9 @@ UPROGS=\
 	_cat\
 	_time\
 	_alarmtest\
+	_ps\
+	_testps\
+	_setprio\
 	_userTest\
 	_systemTest\
 	_mixedTest\
