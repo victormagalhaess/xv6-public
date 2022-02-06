@@ -40,7 +40,6 @@ int main(int argc, char *argv[])
     }
     else if (pid > 0)
     {
-        printf(stdout, "Waiting for child\n");
         wait();
     }
     else
