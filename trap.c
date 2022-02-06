@@ -30,7 +30,7 @@ void idtinit(void)
   lidt(idt, sizeof(idt));
 }
 
-//PAGEBREAK: 41
+// PAGEBREAK: 41
 void trap(struct trapframe *tf)
 {
   if (tf->trapno == T_SYSCALL)
@@ -55,6 +55,16 @@ void trap(struct trapframe *tf)
       release(&tickslock);
     }
     lapiceoi();
+
+    if (myproc() && (tf->cs & 3) == DPL_USER)
+    {
+      myproc()->interruptionTicks++;
+      if (myproc()->maxInterruptionTicks == myproc()->interruptionTicks)
+      {
+        myproc()->interruptionTicks = 0;
+        scheduler();
+      }
+    }
     break;
   case T_IRQ0 + IRQ_IDE:
     ideintr();
@@ -78,7 +88,7 @@ void trap(struct trapframe *tf)
     lapiceoi();
     break;
 
-  //PAGEBREAK: 13
+  // PAGEBREAK: 13
   default:
     if (myproc() == 0 || (tf->cs & 3) == 0)
     {

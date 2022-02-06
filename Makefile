@@ -170,7 +170,7 @@ UPROGS=\
 	_time\
 	_alarmtest\
 	_ps\
-	_testps\
+	_tps\
 	_setprio\
 	_userTest\
 	_systemTest\
