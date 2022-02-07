@@ -51,20 +51,32 @@ void trap(struct trapframe *tf)
     {
       acquire(&tickslock);
       ticks++;
+
+      if (myproc())
+      {
+
+        // cprintf("iticks: %d, procname: %s, procticks: %d, totalTicks: %d\n", ticks, myproc()->name, myproc()->interruptionTicks, myproc()->maxInterruptionTicks);
+        // cprintf("diference: %d <= %d", myproc()->interruptionTicks + myproc()->maxInterruptionTicks, ticks);
+        if (strncmp("init", myproc()->name, 2) != 0 && strncmp("sh", myproc()->name, 2) != 0)
+        {
+          if (myproc()->interruptionTicks + myproc()->maxInterruptionTicks <= ticks)
+          {
+            // cprintf("hora de morrer processo\n");
+            myproc()->interruptionTicks = ticks;
+            myproc()->killed = 1;
+          }
+
+          if (myproc()->killed)
+          {
+            exit();
+          }
+        }
+      }
       wakeup(&ticks);
       release(&tickslock);
     }
     lapiceoi();
 
-    if (myproc() && (tf->cs & 3) == DPL_USER)
-    {
-      myproc()->interruptionTicks++;
-      if (myproc()->maxInterruptionTicks == myproc()->interruptionTicks)
-      {
-        myproc()->interruptionTicks = 0;
-        scheduler();
-      }
-    }
     break;
   case T_IRQ0 + IRQ_IDE:
     ideintr();

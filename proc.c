@@ -93,6 +93,8 @@ void refreshTimeGivenForAllProcess(void)
     if (totalPriorities != 0 && processPriorityShouldBeAccounted(p2))
     {
       p2->allowedTime = ((float)p2->priority / (float)totalPriorities) * executionWindowMiliSeconds;
+      // cprintf("esse é o tempo: %d\n", (int)p2->allowedTime);
+      p2->maxInterruptionTicks = (int)p2->allowedTime / 10;
     }
     else
     {
@@ -125,7 +127,8 @@ found:
   p->state = EMBRYO;
   p->pid = nextpid++;
   p->priority = 1;
-  p->maxInterruptionTicks = 10;
+  p->interruptionTicks = ticks - 1;
+  p->maxInterruptionTicks = 1000;
   refreshTimeGivenForAllProcess();
 
   release(&ptable.lock);
