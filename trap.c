@@ -30,7 +30,7 @@ void idtinit(void)
   lidt(idt, sizeof(idt));
 }
 
-//PAGEBREAK: 41
+// PAGEBREAK: 41
 void trap(struct trapframe *tf)
 {
   if (tf->trapno == T_SYSCALL)
@@ -51,10 +51,32 @@ void trap(struct trapframe *tf)
     {
       acquire(&tickslock);
       ticks++;
+
+      if (myproc())
+      {
+
+        // cprintf("iticks: %d, procname: %s, procticks: %d, totalTicks: %d\n", ticks, myproc()->name, myproc()->interruptionTicks, myproc()->maxInterruptionTicks);
+        // cprintf("diference: %d <= %d", myproc()->interruptionTicks + myproc()->maxInterruptionTicks, ticks);
+        if (strncmp("init", myproc()->name, 2) != 0 && strncmp("sh", myproc()->name, 2) != 0)
+        {
+          if (myproc()->interruptionTicks + myproc()->maxInterruptionTicks <= ticks)
+          {
+            // cprintf("hora de morrer processo\n");
+            myproc()->interruptionTicks = ticks;
+            myproc()->killed = 1;
+          }
+
+          if (myproc()->killed)
+          {
+            exit();
+          }
+        }
+      }
       wakeup(&ticks);
       release(&tickslock);
     }
     lapiceoi();
+
     break;
   case T_IRQ0 + IRQ_IDE:
     ideintr();
@@ -78,7 +100,7 @@ void trap(struct trapframe *tf)
     lapiceoi();
     break;
 
-  //PAGEBREAK: 13
+  // PAGEBREAK: 13
   default:
     if (myproc() == 0 || (tf->cs & 3) == 0)
     {
@@ -110,4 +132,17 @@ void trap(struct trapframe *tf)
   // Check if the process has been killed since we yielded
   if (myproc() && myproc()->killed && (tf->cs & 3) == DPL_USER)
     exit();
+
+  if (myproc() && (tf->cs & 3) == 3)
+  {
+    myproc()->curalarmticks++;
+    if (myproc()->alarmticks == myproc()->curalarmticks)
+    {
+      myproc()->curalarmticks = 0;
+      tf->esp -= 4;
+      *((uint *)(tf->esp)) = tf->eip;
+
+      tf->eip = (uint)myproc()->alarmhandler;
+    }
+  }
 }

@@ -67,11 +67,47 @@ myproc(void)
   return p;
 }
 
-//PAGEBREAK: 32
-// Look in the process table for an UNUSED proc.
-// If found, change state to EMBRYO and initialize
-// state required to run in the kernel.
-// Otherwise return 0.
+int processPriorityShouldBeAccounted(struct proc *p)
+{
+  return (p->state == RUNNABLE || p->state == RUNNING || p->state == SLEEPING);
+}
+
+void refreshTimeGivenForAllProcess(void)
+{
+  struct proc *p = ptable.proc;
+  struct proc *p2;
+  int executionWindowMiliSeconds = 10000;
+  // Formula given by the professor
+  int totalPriorities = 0;
+  for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if (processPriorityShouldBeAccounted(p))
+    {
+      totalPriorities += p->priority;
+    }
+  }
+
+  for (p2 = ptable.proc; p2 < &ptable.proc[NPROC]; p2++)
+  {
+    // new time for each process will be the fraction of all priorities taken by the process multiplied by the 10 second window
+    if (totalPriorities != 0 && processPriorityShouldBeAccounted(p2))
+    {
+      p2->allowedTime = ((float)p2->priority / (float)totalPriorities) * executionWindowMiliSeconds;
+      // cprintf("esse é o tempo: %d\n", (int)p2->allowedTime);
+      p2->maxInterruptionTicks = (int)p2->allowedTime / 10;
+    }
+    else
+    {
+      p2->allowedTime = 0;
+    }
+  }
+}
+
+// PAGEBREAK: 32
+//  Look in the process table for an UNUSED proc.
+//  If found, change state to EMBRYO and initialize
+//  state required to run in the kernel.
+//  Otherwise return 0.
 static struct proc *
 allocproc(void)
 {
@@ -90,6 +126,10 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+  p->priority = 1;
+  p->interruptionTicks = ticks - 1;
+  p->maxInterruptionTicks = 1000;
+  refreshTimeGivenForAllProcess();
 
   release(&ptable.lock);
 
@@ -118,8 +158,8 @@ found:
   return p;
 }
 
-//PAGEBREAK: 32
-// Set up first user process.
+// PAGEBREAK: 32
+//  Set up first user process.
 void userinit(void)
 {
   struct proc *p;
@@ -270,6 +310,12 @@ void exit(void)
   }
 
   // Jump into the scheduler, never to return.
+  if (curproc->priority > 0)
+  {
+    curproc->priority = 0;
+    curproc->allowedTime = 0;
+    refreshTimeGivenForAllProcess();
+  }
   curproc->state = ZOMBIE;
   sched();
   panic("zombie exit");
@@ -318,21 +364,45 @@ int wait(void)
     }
 
     // Wait for children to exit.  (See wakeup1 call in proc_exit.)
-    sleep(curproc, &ptable.lock); //DOC: wait-sleep
+    sleep(curproc, &ptable.lock); // DOC: wait-sleep
   }
 }
 
-//PAGEBREAK: 42
-// Per-CPU process scheduler.
-// Each CPU calls scheduler() after setting itself up.
-// Scheduler never returns.  It loops, doing:
-//  - choose a process to run
-//  - swtch to start running that process
-//  - eventually that process transfers control
-//      via swtch back to the scheduler.
+// This method does a linear search [O(n)] in order to find the process with higher priority
+struct proc *findHigherPriorityProcess()
+{
+  struct proc *p, *hp;
+  sti();
+  acquire(&ptable.lock);
+  p = ptable.proc;
+  hp = p;
+  for (; p < &ptable.proc[NPROC]; p++)
+  {
+    if (p->state != RUNNABLE)
+      continue;
+
+    if (p->priority > hp->priority)
+    {
+      hp = p;
+    }
+  }
+  return p;
+}
+
+// PAGEBREAK: 42
+//  Per-CPU process scheduler.
+//  Each CPU calls scheduler() after setting itself up.
+//  Scheduler never returns.  It loops, doing:
+//   - choose a process to run
+//   - swtch to start running that process
+//   - eventually that process transfers control
+//       via swtch back to the scheduler.
+//  In the old scheduler, it just ran the first RUNNABLE process that were ready in proctable
+//  However, now it must find the RUNNABLE process with the higher priority that is ready to run.
+
 void scheduler(void)
 {
-  struct proc *p;
+  struct proc *p, *hp, *auxp;
   struct cpu *c = mycpu();
   c->proc = 0;
 
@@ -345,17 +415,29 @@ void scheduler(void)
     acquire(&ptable.lock);
     for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     {
-      if (p->state != RUNNABLE)
-        continue;
+      hp = p;
+      for (auxp = ptable.proc; auxp < &ptable.proc[NPROC]; auxp++)
+      {
+        if (auxp->state != RUNNABLE)
+          continue;
 
+        if (auxp->priority > hp->priority)
+        {
+          hp = auxp;
+        }
+      }
+
+      if (hp->state != RUNNABLE)
+        continue;
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
+      refreshTimeGivenForAllProcess();
+      c->proc = hp;
+      switchuvm(hp);
+      hp->state = RUNNING;
 
-      swtch(&(c->scheduler), p->context);
+      swtch(&(c->scheduler), hp->context);
       switchkvm();
 
       // Process is done running for now.
@@ -394,7 +476,7 @@ void sched(void)
 // Give up the CPU for one scheduling round.
 void yield(void)
 {
-  acquire(&ptable.lock); //DOC: yieldlock
+  acquire(&ptable.lock); // DOC: yieldlock
   myproc()->state = RUNNABLE;
   sched();
   release(&ptable.lock);
@@ -440,8 +522,8 @@ void sleep(void *chan, struct spinlock *lk)
   // (wakeup runs with ptable.lock locked),
   // so it's okay to release lk.
   if (lk != &ptable.lock)
-  {                        //DOC: sleeplock0
-    acquire(&ptable.lock); //DOC: sleeplock1
+  {                        // DOC: sleeplock0
+    acquire(&ptable.lock); // DOC: sleeplock1
     release(lk);
   }
   // Go to sleep.
@@ -455,15 +537,15 @@ void sleep(void *chan, struct spinlock *lk)
 
   // Reacquire original lock.
   if (lk != &ptable.lock)
-  { //DOC: sleeplock2
+  { // DOC: sleeplock2
     release(&ptable.lock);
     acquire(lk);
   }
 }
 
-//PAGEBREAK!
-// Wake up all processes sleeping on chan.
-// The ptable lock must be held.
+// PAGEBREAK!
+//  Wake up all processes sleeping on chan.
+//  The ptable lock must be held.
 static void
 wakeup1(void *chan)
 {
@@ -506,10 +588,10 @@ int kill(int pid)
   return -1;
 }
 
-//PAGEBREAK: 36
-// Print a process listing to console.  For debugging.
-// Runs when user types ^P on console.
-// No lock to avoid wedging a stuck machine further.
+// PAGEBREAK: 36
+//  Print a process listing to console.  For debugging.
+//  Runs when user types ^P on console.
+//  No lock to avoid wedging a stuck machine further.
 void procdump(void)
 {
   static char *states[] = {
@@ -541,4 +623,77 @@ void procdump(void)
     }
     cprintf("\n");
   }
+}
+
+void printProcessStatus(char *status, struct proc *p)
+{
+  int numberOfZeros = 0;
+  int allwdTime = p->allowedTime;
+  while (allwdTime > 0)
+  {
+    numberOfZeros++;
+    allwdTime /= 10;
+  }
+  cprintf("%d \t %d \t\t    ", p->pid, p->priority);
+  for (int i = 4 - numberOfZeros; i > 0; i--)
+  {
+    cprintf("%d", 0);
+  }
+  cprintf("%dms \t %s \t %s\n", (int)p->allowedTime, p->name, status);
+}
+
+int ps()
+{
+
+  sti();
+  acquire(&ptable.lock);
+  struct proc *p = ptable.proc;
+
+  int totalPriorities = 0;
+  while (p < &ptable.proc[NPROC])
+  {
+    if (processPriorityShouldBeAccounted(p))
+      totalPriorities += p->priority;
+    p++;
+  }
+
+  // acquire example copyed from the kill function
+  cprintf("Pid \t Prioridade \t Exec \t\t Nome \t Status\n");
+
+  for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    switch (p->state)
+    {
+    case SLEEPING:
+      printProcessStatus("SLEEPING", p);
+      break;
+    case RUNNABLE:
+      printProcessStatus("RUNNABLE", p);
+      break;
+    case RUNNING:
+      printProcessStatus("RUNNING", p);
+      break;
+    default:
+      break;
+    }
+  }
+  release(&ptable.lock);
+  return 25;
+}
+
+int setprio(int pid, int priority)
+{
+  struct proc *p;
+  acquire(&ptable.lock);
+  for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if (p->pid == pid)
+    {
+      p->priority = priority;
+      refreshTimeGivenForAllProcess();
+      break;
+    }
+  }
+  release(&ptable.lock);
+  return pid;
 }

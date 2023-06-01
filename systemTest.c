@@ -8,6 +8,6 @@ int stderr = 2;
 
 int main(int argc, char *argv[])
 {
-    sleep(200);
+    sleep(300);
     exit();
 }
